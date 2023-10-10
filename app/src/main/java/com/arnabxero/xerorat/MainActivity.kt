@@ -56,13 +56,20 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
-        createUserButton.setOnClickListener {
-            // Call the API with Retrofit
-            val username = usernameEditText.text.toString()
-            val password = passwordEditText.text.toString()
-            val credentials = UserCredentials(username, password)
-            performLogin(credentials)
+        if(getUserIdFromLocalStorage()?.isNotEmpty() == true){
+            // Start Page2Activity
+            val intent = Intent(this@MainActivity, Page2Activity::class.java)
+            startActivity(intent)
+        }else{
+            createUserButton.setOnClickListener {
+                // Call the API with Retrofit
+                val username = usernameEditText.text.toString()
+                val password = passwordEditText.text.toString()
+                val credentials = UserCredentials(username, password)
+                performLogin(credentials)
+            }
         }
+
     }
 
     private fun performLogin(credentials: UserCredentials) {
@@ -126,6 +133,11 @@ class MainActivity : AppCompatActivity() {
         val editor: SharedPreferences.Editor = sharedPref.edit()
         editor.putString("user_id", userId)
         editor.apply()
+    }
+
+    private fun getUserIdFromLocalStorage(): String? {
+        val sharedPref: SharedPreferences = getSharedPreferences("xerorat_user_id", Context.MODE_PRIVATE)
+        return sharedPref.getString("user_id", null)
     }
 
     companion object {
