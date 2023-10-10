@@ -1,4 +1,3 @@
-@@ -1,47 +0,0 @@
 # 🕵️ Android Spyware System
 
 ## Overview
